@@ -1,0 +1,281 @@
+{
+  "dashboard": {
+    "title": "数据质量监控 - 规则加载状态",
+    "tags": ["data-quality", "flink", "rule-loading"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "规则加载状态总览",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "ruleLoading_isDegraded",
+            "legendFormat": "降级状态"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "正常"},
+              {"type": "value", "value": "1", "text": "降级"}
+            ],
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "当前规则版本",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "ruleLoading_currentVersion",
+            "legendFormat": "版本号"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 3,
+        "title": "距离上次加载时间",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "ruleLoading_timeSinceLastLoadSeconds",
+            "legendFormat": "秒"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "unit": "s"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 300, "color": "yellow"},
+                {"value": 3600, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "规则加载成功率",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "job:ruleLoading_success_rate:rate5m * 100",
+            "legendFormat": "成功率"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "unit": "percent"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 99, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "规则加载次数统计（最近 5 分钟）",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "rate(ruleLoading_successCount[5m]) * 60",
+            "legendFormat": "成功 (次/分钟)"
+          },
+          {
+            "expr": "rate(ruleLoading_failureCount[5m]) * 60",
+            "legendFormat": "失败 (次/分钟)"
+          },
+          {
+            "expr": "rate(ruleLoading_fromBackupCount[5m]) * 60",
+            "legendFormat": "从备份加载 (次/分钟)"
+          },
+          {
+            "expr": "rate(ruleLoading_emptyCount[5m]) * 60",
+            "legendFormat": "空规则 (次/分钟)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "失败 (次/分钟)"},
+              "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "从备份加载 (次/分钟)"},
+              "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "orange"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "空规则 (次/分钟)"},
+              "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "dark-red"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "规则版本变化趋势",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "ruleLoading_currentVersion",
+            "legendFormat": "规则版本号"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "stepAfter",
+              "fillOpacity": 0
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "规则加载累计统计",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "ruleLoading_successCount",
+            "legendFormat": "成功次数"
+          },
+          {
+            "expr": "ruleLoading_failureCount",
+            "legendFormat": "失败次数"
+          },
+          {
+            "expr": "ruleLoading_fromBackupCount",
+            "legendFormat": "从备份加载次数"
+          },
+          {
+            "expr": "ruleLoading_emptyCount",
+            "legendFormat": "空规则次数"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 0
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "规则加载成功率趋势",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "job:ruleLoading_success_rate:rate5m * 100",
+            "legendFormat": "成功率 (%)"
+          },
+          {
+            "expr": "job:ruleLoading_failure_rate:rate5m * 100",
+            "legendFormat": "失败率 (%)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "失败率 (%)"},
+              "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 9,
+        "title": "告警状态",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "ALERTS{alertname=~\"RuleLoading.*\"}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "__name__": true,
+                "Time": true
+              },
+              "indexByName": {
+                "alertname": 0,
+                "alertstate": 1,
+                "severity": 2,
+                "summary": 3,
+                "description": 4
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

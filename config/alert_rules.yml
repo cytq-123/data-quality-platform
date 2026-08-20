@@ -1,0 +1,93 @@
+# Prometheus 告警规则
+
+groups:
+  - name: data_quality_alerts
+    interval: 30s
+    rules:
+      # 数据质量通过率低于95%
+      - alert: LowDataQualityPassRate
+        expr: |
+          (
+            sum(rate(flink_taskmanager_job_task_operator_numRecordsOut{operator_name="Valid Orders to Kafka"}[5m]))
+            /
+            sum(rate(flink_taskmanager_job_task_operator_numRecordsIn{operator_name="Rule Engine Validation"}[5m]))
+          ) < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "数据质量通过率低于95%"
+          description: "过去5分钟数据质量通过率为 {{ $value | humanizePercentage }},低于95%阈值"
+          
+      # 异常数据量激增
+      - alert: InvalidDataSpike
+        expr: |
+          rate(flink_taskmanager_job_task_operator_numRecordsOut{operator_name="Invalid Orders to Kafka"}[5m]) > 100
+        for: 5m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "异常数据量激增"
+          description: "过去5分钟异常数据量为 {{ $value | humanize }} 条/秒,超过100条/秒阈值"
+          
+      # Flink 任务延迟过高
+      - alert: HighFlinkLatency
+        expr: |
+          flink_taskmanager_job_latency_source_id_operator_id_operator_subtask_index_latency{quantile="0.99"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "Flink任务延迟过高"
+          description: "P99延迟为 {{ $value | humanize }} ms,超过1000ms阈值"
+          
+      # Flink 任务失败
+      - alert: FlinkJobFailed
+        expr: |
+          flink_jobmanager_job_uptime == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "Flink任务失败"
+          description: "Flink任务已停止运行"
+          
+      # ClickHouse 查询延迟过高
+      - alert: HighClickHouseQueryLatency
+        expr: |
+          rate(clickhouse_query_duration_seconds_sum[5m]) / rate(clickhouse_query_duration_seconds_count[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+        annotations:
+          summary: "ClickHouse查询延迟过高"
+          description: "平均查询延迟为 {{ $value | humanize }} 秒,超过1秒阈值"
+          
+      # Redis 连接失败
+      - alert: RedisConnectionFailed
+        expr: |
+          redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "Redis连接失败"
+          description: "Redis服务不可用"
+          
+      # MySQL 连接失败
+      - alert: MySQLConnectionFailed
+        expr: |
+          mysql_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data-platform
+        annotations:
+          summary: "MySQL连接失败"
+          description: "MySQL服务不可用"

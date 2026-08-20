@@ -1,0 +1,81 @@
+# Prometheus 告警规则 - 规则引擎监控
+
+groups:
+  - name: rule_engine_alerts
+    interval: 30s
+    rules:
+      # 规则错误率告警
+      - alert: RuleHighErrorRate
+        expr: flink_taskmanager_job_task_operator_rule_errorRate > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          component: rule_engine
+        annotations:
+          summary: "Rule {{ $labels.rule }} has high error rate"
+          description: "Rule {{ $labels.rule }} error rate is {{ $value | humanizePercentage }} (threshold: 30%)"
+          
+      - alert: RuleCriticalErrorRate
+        expr: flink_taskmanager_job_task_operator_rule_errorRate > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          component: rule_engine
+        annotations:
+          summary: "Rule {{ $labels.rule }} has critical error rate"
+          description: "Rule {{ $labels.rule }} error rate is {{ $value | humanizePercentage }} (threshold: 50%). Circuit breaker may be triggered."
+      
+      # 规则失败率告警
+      - alert: RuleHighFailureRate
+        expr: flink_taskmanager_job_task_operator_rule_failureRate > 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: rule_engine
+        annotations:
+          summary: "Rule {{ $labels.rule }} has high failure rate"
+          description: "Rule {{ $labels.rule }} failure rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+      
+      # 规则执行耗时告警
+      - alert: RuleHighLatency
+        expr: flink_taskmanager_job_task_operator_rule_avgLatencyMs > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: rule_engine
+        annotations:
+          summary: "Rule {{ $labels.rule }} has high latency"
+          description: "Rule {{ $labels.rule }} average latency is {{ $value }}ms (threshold: 100ms)"
+      
+      # 规则执行次数异常 (突然下降可能表示规则被禁用或熔断)
+      - alert: RuleExecutionDropped
+        expr: rate(flink_taskmanager_job_task_operator_rule_executionCount[5m]) < 0.1 * rate(flink_taskmanager_job_task_operator_rule_executionCount[1h] offset 1h)
+        for: 5m
+        labels:
+          severity: warning
+          component: rule_engine
+        annotations:
+          summary: "Rule {{ $labels.rule }} execution rate dropped"
+          description: "Rule {{ $labels.rule }} execution rate dropped significantly. May be disabled or circuit breaker opened."
+      
+      # 全局数据质量告警
+      - alert: DataQualityLow
+        expr: flink_taskmanager_job_task_operator_validRecords / (flink_taskmanager_job_task_operator_validRecords + flink_taskmanager_job_task_operator_invalidRecords) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: data_quality
+        annotations:
+          summary: "Data quality is low"
+          description: "Valid data rate is {{ $value | humanizePercentage }} (threshold: 80%)"
+      
+      # 吞吐量告警
+      - alert: LowThroughput
+        expr: rate(flink_taskmanager_job_task_operator_totalRecords[5m]) < 100
+        for: 5m
+        labels:
+          severity: info
+          component: data_quality
+        annotations:
+          summary: "Low throughput detected"
+          description: "Processing rate is {{ $value }} records/sec (threshold: 100 records/sec)"

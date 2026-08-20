@@ -1,0 +1,41 @@
+# Prometheus 配置文件
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# 告警规则文件
+rule_files:
+  - "alert_rules.yml"
+  - "prometheus_rules.yml"
+
+# 抓取配置
+scrape_configs:
+  # Flink 指标
+  - job_name: 'flink'
+    static_configs:
+      - targets: ['localhost:9249']
+        labels:
+          application: 'data-quality-monitor'
+    metric_relabel_configs:
+      # 保留规则相关的指标
+      - source_labels: [__name__]
+        regex: 'flink_taskmanager_job_task_operator_rule_.*'
+        action: keep
+      # 保留数据质量相关的指标
+      - source_labels: [__name__]
+        regex: 'flink_taskmanager_job_task_operator_(totalRecords|validRecords|invalidRecords|recordsPerSecond|maxLatencyMs|minLatencyMs|avgLatencyMs).*'
+        action: keep
+          
+  # ClickHouse 指标
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['localhost:9363']
+        labels:
+          application: 'data-quality-monitor'
+
+# Alertmanager 配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']

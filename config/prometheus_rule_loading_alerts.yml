@@ -1,0 +1,184 @@
+# Prometheus 告警规则 - 规则加载监控
+# 
+# 使用方法：
+# 1. 将此文件放到 Prometheus 配置目录
+# 2. 在 prometheus.yml 中添加：
+#    rule_files:
+#      - "prometheus_rule_loading_alerts.yml"
+# 3. 重启 Prometheus
+
+groups:
+  - name: data_quality_rule_loading
+    interval: 30s
+    rules:
+      # ========================================
+      # 规则加载降级告警（警告级别）
+      # ========================================
+      - alert: RuleLoadingDegraded
+        expr: ruleLoading_isDegraded == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "数据质量规则加载处于降级状态"
+          description: |
+            Flink 作业正在使用备份规则或空规则列表
+            - 当前状态: 降级
+            - 持续时间: 5 分钟
+            - 影响: 规则可能过期，数据质量校验可能不准确
+            - 处理建议: 
+              1. 检查 MySQL 连接状态
+              2. 检查网络连接
+              3. 查看 Flink 作业日志
+          dashboard: "http://grafana/d/data-quality/rule-loading"
+      
+      # ========================================
+      # 规则加载失败率过高告警（警告级别）
+      # ========================================
+      - alert: RuleLoadingFailureRateHigh
+        expr: rate(ruleLoading_failureCount[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "规则加载失败率过高"
+          description: |
+            最近 5 分钟规则加载失败率超过 10%
+            - 失败率: {{ $value | humanizePercentage }}
+            - 持续时间: 2 分钟
+            - 影响: 规则更新可能延迟
+            - 处理建议:
+              1. 检查 MySQL 性能
+              2. 检查连接池配置
+              3. 查看错误日志
+      
+      # ========================================
+      # 空规则告警（严重级别）
+      # ========================================
+      - alert: RuleLoadingEmpty
+        expr: increase(ruleLoading_emptyCount[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "规则加载为空（严重）"
+          description: |
+            Flink 作业使用空规则列表，数据质量校验已禁用！
+            - 当前状态: 空规则
+            - 持续时间: 1 分钟
+            - 影响: 数据质量校验完全失效
+            - 处理建议:
+              1. 立即检查 MySQL 连接
+              2. 检查备份文件是否存在
+              3. 考虑重启 Flink 作业
+              4. 紧急情况下手动恢复备份文件
+          runbook: "https://wiki/data-quality/runbook/empty-rules"
+      
+      # ========================================
+      # 规则版本过旧告警（警告级别）
+      # ========================================
+      - alert: RuleVersionTooOld
+        expr: ruleLoading_timeSinceLastLoadSeconds > 3600
+        for: 5m
+        labels:
+          severity: warning
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "规则版本过旧"
+          description: |
+            规则超过 1 小时未更新，可能存在连接问题
+            - 距离上次加载: {{ $value | humanizeDuration }}
+            - 持续时间: 5 分钟
+            - 影响: 规则可能过期
+            - 处理建议:
+              1. 检查 MySQL 连接
+              2. 检查 Redis Pub/Sub 是否正常
+              3. 检查 Flink Timer 是否触发
+      
+      # ========================================
+      # 从备份加载频率过高告警（警告级别）
+      # ========================================
+      - alert: RuleLoadingFromBackupTooFrequent
+        expr: rate(ruleLoading_fromBackupCount[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "从备份加载规则频率过高"
+          description: |
+            最近 10 分钟从备份加载规则的频率超过 5%
+            - 频率: {{ $value | humanizePercentage }}
+            - 持续时间: 5 分钟
+            - 影响: MySQL 可能不稳定
+            - 处理建议:
+              1. 检查 MySQL 稳定性
+              2. 检查网络稳定性
+              3. 考虑增加连接池大小
+      
+      # ========================================
+      # 规则加载成功率过低告警（警告级别）
+      # ========================================
+      - alert: RuleLoadingSuccessRateLow
+        expr: |
+          rate(ruleLoading_successCount[10m]) 
+          / 
+          (rate(ruleLoading_successCount[10m]) + rate(ruleLoading_failureCount[10m])) 
+          < 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: data-quality
+          team: data-platform
+        annotations:
+          summary: "规则加载成功率过低"
+          description: |
+            最近 10 分钟规则加载成功率低于 90%
+            - 成功率: {{ $value | humanizePercentage }}
+            - 持续时间: 5 分钟
+            - 影响: 规则更新不稳定
+            - 处理建议:
+              1. 检查 MySQL 性能和稳定性
+              2. 检查网络质量
+              3. 查看详细错误日志
+
+# ========================================
+# 记录规则（用于统计和分析）
+# ========================================
+  - name: data_quality_rule_loading_recording
+    interval: 30s
+    rules:
+      # 规则加载总次数
+      - record: job:ruleLoading_total:rate5m
+        expr: |
+          rate(ruleLoading_successCount[5m]) 
+          + rate(ruleLoading_failureCount[5m])
+      
+      # 规则加载成功率
+      - record: job:ruleLoading_success_rate:rate5m
+        expr: |
+          rate(ruleLoading_successCount[5m]) 
+          / 
+          (rate(ruleLoading_successCount[5m]) + rate(ruleLoading_failureCount[5m]))
+      
+      # 规则加载失败率
+      - record: job:ruleLoading_failure_rate:rate5m
+        expr: |
+          rate(ruleLoading_failureCount[5m]) 
+          / 
+          (rate(ruleLoading_successCount[5m]) + rate(ruleLoading_failureCount[5m]))
+      
+      # 从备份加载的比例
+      - record: job:ruleLoading_from_backup_ratio:rate5m
+        expr: |
+          rate(ruleLoading_fromBackupCount[5m]) 
+          / 
+          (rate(ruleLoading_successCount[5m]) + rate(ruleLoading_fromBackupCount[5m]))

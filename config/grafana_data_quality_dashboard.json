@@ -1,0 +1,360 @@
+{
+  "dashboard": {
+    "title": "实时数据质量监控平台",
+    "tags": ["data-quality", "flink", "real-time"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "数据处理总量",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_totalRecords",
+            "legendFormat": "总记录数"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 2,
+        "title": "有效数据量",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_validRecords",
+            "legendFormat": "有效记录"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "无效数据量",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_invalidRecords",
+            "legendFormat": "无效记录"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 100, "color": "yellow"},
+                {"value": 1000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "数据质量通过率",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "(flink_taskmanager_job_task_operator_validRecords / flink_taskmanager_job_task_operator_totalRecords) * 100",
+            "legendFormat": "通过率"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "实时吞吐量 (条/秒)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "rate(flink_taskmanager_job_task_operator_totalRecords[1m])",
+            "legendFormat": "总吞吐量"
+          },
+          {
+            "expr": "rate(flink_taskmanager_job_task_operator_validRecords[1m])",
+            "legendFormat": "有效数据"
+          },
+          {
+            "expr": "rate(flink_taskmanager_job_task_operator_invalidRecords[1m])",
+            "legendFormat": "无效数据"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "never"
+            },
+            "unit": "rps"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "无效数据"},
+              "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "数据处理延迟 (毫秒)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_maxLatencyMs",
+            "legendFormat": "最大延迟"
+          },
+          {
+            "expr": "flink_taskmanager_job_task_operator_avgLatencyMs",
+            "legendFormat": "平均延迟 (窗口)"
+          },
+          {
+            "expr": "flink_taskmanager_job_task_operator_minLatencyMs",
+            "legendFormat": "最小延迟"
+          },
+          {
+            "expr": "flink_taskmanager_job_task_operator_globalAvgLatencyMs",
+            "legendFormat": "全局平均延迟"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 0
+            },
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Kafka 消费滞后 (Lag)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_KafkaConsumer_records_lag_max",
+            "legendFormat": "{{topic}} - {{partition}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "ClickHouse 写入性能",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "targets": [
+          {
+            "expr": "rate(flink_taskmanager_job_task_numRecordsOut{operator_name=~\".*ClickHouse.*\"}[1m])",
+            "legendFormat": "写入速率 (条/秒)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10
+            },
+            "unit": "rps"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Flink 任务并行度",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "flink_jobmanager_job_numRestarts",
+            "legendFormat": "作业重启次数"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 3, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "TaskManager CPU 使用率",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 20},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_Status_JVM_CPU_Load * 100",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 90, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 11,
+        "title": "TaskManager 内存使用",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "(flink_taskmanager_Status_JVM_Memory_Heap_Used / flink_taskmanager_Status_JVM_Memory_Heap_Max) * 100",
+            "legendFormat": "堆内存 %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 70, "color": "yellow"},
+                {"value": 85, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 12,
+        "title": "规则加载状态",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 20},
+        "targets": [
+          {
+            "expr": "flink_taskmanager_job_task_operator_ruleLoading_isDegraded",
+            "legendFormat": "降级状态"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "colorMode": "background"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "0", "text": "✓ 正常"},
+              {"type": "value", "value": "1", "text": "⚠ 降级"}
+            ],
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "orange"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "title": "数据质量趋势",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "(rate(flink_taskmanager_job_task_operator_validRecords[5m]) / rate(flink_taskmanager_job_task_operator_totalRecords[5m])) * 100",
+            "legendFormat": "质量通过率 (%)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 30
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        }
+      }
+    ]
+  }
+}
